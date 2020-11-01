@@ -9,7 +9,7 @@ with open('LICENSE') as f:
     license_file = f.read()
 
 setup(
-    name='Breefkase Tasks CLI',
+    name='breefkase-tasks-cli',
     version='0.1.0',
     description='Experimental ToDo Management Command Line Interface',
     long_description=readme,

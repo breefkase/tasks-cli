@@ -31,3 +31,7 @@ class TaskItem:
         d["status"] = status
         d["end"] = datetime.datetime.now().isoformat()
         self.db.insert(self.docitem)
+
+    def archive(self):
+        self.doc["archived"] = True
+        self.db.insert(self.docitem)

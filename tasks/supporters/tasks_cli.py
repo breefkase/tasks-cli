@@ -53,10 +53,10 @@ def print_docs(docs):
 
 def today(*args):
     docs = db.fetchall()
-    docs = task_action.filter_today(docs)
-    print_docs(docs)
+    docs_filtered = task_action.filter_today(docs)
+    print_docs(docs_filtered)
     print(8*"*")
-    print(len(docs), " tasks")
+    print(f"Of {len(docs)} tasks, {len(docs_filtered)} are due")
 
 
 def add(*args):
@@ -80,6 +80,9 @@ def cancel(args):
 
 
 def done(args):
+    if not args.id:
+        print("No id")
+        return
     task = TaskItem(args.id, db)
     task.done()
     print(f"Task {args.id} marked as done")
@@ -91,7 +94,27 @@ def view(args):
         task = TaskItem(docid, db)
         print_doc(task.doc)
     except KeyError:
-        print(f"Could not find id {docid}")
+        print(f"Could not find id {args.id}")
+
+
+def archive(args):
+    print(f"Archiving...")
+    # TODO: Implement for cancelled status, the same as for done
+    if args.done:
+        print("Marking ")
+        docs = db.fetchall()
+        for d in docs:
+            task = TaskItem(d["doc"]["_id"], db)
+            status = task.doc.get("status", None)
+            archived = task.doc.get("archived", None)
+            if status == "done" and not archived:
+                print(task.doc)
+                task.archive()
+    db.archive()
+
+
+def unarchive(args):
+    db.unarchive()
 
 
 """
@@ -103,9 +126,7 @@ parser = argparse.ArgumentParser(
     description='Interface for interacting with a breefkase directory',
     epilog='Enjoy the program! :)')
 parser.add_argument("-m", "--menu", help="CLI-interface w/menu")
-
 subparsers = parser.add_subparsers()
-
 parser_today = subparsers.add_parser('today',
                                      aliases=['tod'],
                                      help='Today and overdue tasks')
@@ -118,12 +139,21 @@ parser_add.set_defaults(func=add)
 parser_cancel = subparsers.add_parser('cancel', help='Mark task as cancelled. Takes --id argument')
 parser_cancel.add_argument('-i', '--id', default=None, help="Task ID")
 parser_cancel.set_defaults(func=cancel)
+
 parser_done = subparsers.add_parser('done', help='Mark task as done. Takes --id argument')
 parser_done.add_argument('-i', '--id', default=None, help="Task ID")
 parser_done.set_defaults(func=done)
+
 parser_view = subparsers.add_parser('view', help='View task. Takes --id argument')
 parser_view.add_argument('-i', '--id', default=None, help="Task ID")
 parser_view.set_defaults(func=view)
+
+parser_archive = subparsers.add_parser('archive', help='Archives all tasks having archived:true')
+parser_archive.add_argument('--done', default=False, action="store_true", help="Includes done & cancelled tasks, and marks them as archived")
+parser_archive.set_defaults(func=archive)
+
+parser_unarchive = subparsers.add_parser('unarchive', help='Unarchives all tasks from archive')
+parser_unarchive.set_defaults(func=unarchive)
 
 
 def menu():

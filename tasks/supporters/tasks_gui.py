@@ -30,7 +30,8 @@ breefkase_theme = {
         "configure": {
             "background": nord["background"],
             "foreground": nord["on-primary"],
-            "font": ('Helvetica', 12)
+            #"font": ('Helvetica', 12)
+            "font": ("Monospace", 12),
         }
     },
     "TEntry": {

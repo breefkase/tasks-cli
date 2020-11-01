@@ -45,6 +45,8 @@ class Database:
 
         if self.breefkase_dir and self.collection_name:
             self.verify_collection(collection_name)
+            self.archive_path = Path(self.breefkase_dir).joinpath("database", "archive")
+            self.archive_filepath = Path(self.archive_path).joinpath(f'{self.collection_name}.json')
 
     def verify_breefkase_dir(self, proposed_breefkase_dir):
         print("Verifying breefkase directory")
@@ -116,3 +118,66 @@ class Database:
         print("Deleted doc: ", filepath)
         filepath = Path(filepath)
         filepath.unlink()
+
+    def archive(self):
+        """
+        Archives all items carrying the property archived:true
+        """
+        new_archive = []
+        counts = {
+            "items_in_archive_file_pre_merge": 0,
+            "items_for_archival": 0,
+            "items_in_archive_file_post_merge": 0,
+        }
+        filepaths_for_deletion = []
+        self.archive_path.mkdir(parents=True, exist_ok=True)
+        if self.archive_filepath.is_file():
+            print("Archive file exist. Loading contents...")
+            with open(self.archive_filepath, 'r') as file:
+                archive_file_contents = file.read()
+                for doc in json.loads(archive_file_contents):
+                    new_archive.append(doc)
+            counts["items_in_archive_file_pre_merge"] += len(new_archive)
+        docs = self.fetchall()
+        for d in docs:
+            if d["doc"].get("archived", None):
+                new_archive.append(d["doc"])
+                filepaths_for_deletion.append(d["filepath"])
+        if not len(filepaths_for_deletion):
+            print("No items for archival")
+            return
+        counts["items_for_archival"] += len(filepaths_for_deletion)
+        counts["items_in_archive_file_post_merge"] += len(new_archive)
+        totals_before = counts["items_for_archival"] + counts["items_in_archive_file_pre_merge"]
+        totals_after = counts["items_in_archive_file_post_merge"]
+        print("Remember backing up files before archiving.")
+        answer = input(f"Archive {len(filepaths_for_deletion)} items (Y/n)? ")
+        if answer != "Y":
+            print("Aborted")
+            return
+        if totals_before == totals_after:
+            with open(self.archive_filepath, 'w') as afile:
+                afile.write(json.dumps(new_archive, ensure_ascii=False))
+                print("Wrote items to archive")
+            for fpath in filepaths_for_deletion:
+                fpath.unlink()
+                print("File deleted: ", fpath)
+                # TODO: Post-check that all item ID's are present in archive file
+        else:
+            print("Item counts did not match. Aborting archival")
+
+    def unarchive(self):
+        print(f"Moving items out of archive and into {self.collection_path}")
+        with open(self.archive_filepath, 'r') as file:
+            archive_file_contents = file.read()
+            for doc in json.loads(archive_file_contents):
+                doc["archived"] = False
+                filepath = Path(self.collection_path).joinpath(f'{doc["_id"]}.json')
+                docitem = {
+                    "filepath": filepath,
+                    "filename": filepath.name,
+                    "doc": doc,
+                }
+                self.insert(docitem)
+        with open(self.archive_filepath, 'w') as file:
+            file.write(json.dumps([], ensure_ascii=False))
