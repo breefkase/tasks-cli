@@ -209,7 +209,8 @@ class MainWindow:
         self.get_tasks()
 
     def delete_task(self):
-        self.db.delete(self.detailed["filepath"])
+        filepath = self.detailed["filepath"].get()
+        self.db.delete(filepath)
         self.tree.detach(self.detailed["current_item"])
         self.form_reset()
         self.get_tasks()  # Temporary solution to avoid remaining items, until items are updated ad-hoc

@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePath
 import json
 from supporters.settings import Settings
 
@@ -114,10 +114,10 @@ class Database:
             f.write(doc_json)
 
     def delete(self, filepath):
-        filepath = filepath.get()
-        print("Deleted doc: ", filepath)
-        filepath = Path(filepath)
+        if not isinstance(filepath, PurePath):
+            filepath = Path(filepath)
         filepath.unlink()
+        print("Deleted doc: ", filepath)
 
     def archive(self):
         """

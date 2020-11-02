@@ -7,6 +7,7 @@ from supporters.database import Database
 import supporters.tasks_common as task_action
 from supporters.taskitem import TaskItem
 
+
 # TODO: parser.add_argument("-tom", "--tomorrow", help="tomorrow")
 
 
@@ -30,20 +31,38 @@ settings = Settings()
 db = initialization(settings.breefkase_dir)
 
 
-"""
-Common functions
-"""
+class bcolors:
+    """Colors"""
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+"""Common functions"""
 
 
 def print_doc(doc):
-    print("-" * 16)
-    print("ID\n", doc["_id"])
-    print("Status\n", doc["status"])
+    print(bcolors.OKCYAN, "-" * 16, bcolors.ENDC)
+    printable = {
+        "ID": doc["_id"],
+        "Status": doc["status"],
+        "Title": doc["title"],
+    }
     if doc.get("end", None):
-        print("Ended\n", doc["end"])
+        printable["Ended"] = doc["end"]
     else:
-        print("Due\n", doc["due"])
-    print("Title\n", doc["title"])
+        printable["Due"] = doc["due"]
+    print(bcolors.WARNING)
+    for key, value in printable.items():
+        print(f"""{key}
+        {value}""")
+    print(bcolors.ENDC)
 
 
 def print_docs(docs):
@@ -55,7 +74,7 @@ def today(*args):
     docs = db.fetchall()
     docs_filtered = task_action.filter_today(docs)
     print_docs(docs_filtered)
-    print(8*"*")
+    print(8 * "*")
     print(f"Of {len(docs)} tasks, {len(docs_filtered)} are due")
 
 
@@ -74,6 +93,9 @@ def add(*args):
 
 
 def cancel(args):
+    if not args.id:
+        print("No id given. Use --id")
+        return
     task = TaskItem(args.id, db)
     task.cancel()
     print(f"Task {args.id} marked as cancelled")
@@ -81,7 +103,7 @@ def cancel(args):
 
 def done(args):
     if not args.id:
-        print("No id")
+        print("No id given. Use --id")
         return
     task = TaskItem(args.id, db)
     task.done()
@@ -93,6 +115,18 @@ def view(args):
         docid = args.id
         task = TaskItem(docid, db)
         print_doc(task.doc)
+    except KeyError:
+        print(f"Could not find id {args.id}")
+
+
+def delete(args):
+    if not args.id:
+        print("No id given. Use --id")
+        return
+    try:
+        docid = args.id
+        task = TaskItem(docid, db)
+        db.delete(task.docitem["filepath"])
     except KeyError:
         print(f"Could not find id {args.id}")
 
@@ -148,8 +182,13 @@ parser_view = subparsers.add_parser('view', help='View task. Takes --id argument
 parser_view.add_argument('-i', '--id', default=None, help="Task ID")
 parser_view.set_defaults(func=view)
 
+parser_delete = subparsers.add_parser('delete', help='Delete task. Takes --id argument')
+parser_delete.add_argument('-i', '--id', default=None, help="Task ID")
+parser_delete.set_defaults(func=delete)
+
 parser_archive = subparsers.add_parser('archive', help='Archives all tasks having archived:true')
-parser_archive.add_argument('--done', default=False, action="store_true", help="Includes done & cancelled tasks, and marks them as archived")
+parser_archive.add_argument('--done', default=False, action="store_true",
+                            help="Includes done & cancelled tasks, and marks them as archived")
 parser_archive.set_defaults(func=archive)
 
 parser_unarchive = subparsers.add_parser('unarchive', help='Unarchives all tasks from archive')
@@ -164,6 +203,6 @@ def main():
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
     print("Running Tasks CLI Argument Parser")
-    print(16*">")
+    print(16 * ">")
     args = parser.parse_args()
     args.func(args)
