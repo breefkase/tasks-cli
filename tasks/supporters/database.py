@@ -119,7 +119,7 @@ class Database:
         filepath.unlink()
         print("Deleted doc: ", filepath)
 
-    def archive(self):
+    def archive(self, require_confirmation=True):
         """
         Archives all items carrying the property archived:true
         """
@@ -150,11 +150,12 @@ class Database:
         counts["items_in_archive_file_post_merge"] += len(new_archive)
         totals_before = counts["items_for_archival"] + counts["items_in_archive_file_pre_merge"]
         totals_after = counts["items_in_archive_file_post_merge"]
-        print("Remember backing up files before archiving.")
-        answer = input(f"Archive {len(filepaths_for_deletion)} items (Y/n)? ")
-        if answer != "Y":
-            print("Aborted")
-            return
+        if require_confirmation:
+            print("Remember backing up files before archiving.")
+            answer = input(f"Archive {len(filepaths_for_deletion)} items (Y/n)? ")
+            if answer != "Y":
+                print("Aborted")
+                return
         if totals_before == totals_after:
             with open(self.archive_filepath, 'w') as afile:
                 afile.write(json.dumps(new_archive, ensure_ascii=False))
@@ -163,6 +164,7 @@ class Database:
                 fpath.unlink()
                 print("File deleted: ", fpath)
                 # TODO: Post-check that all item ID's are present in archive file
+            return counts
         else:
             print("Item counts did not match. Aborting archival")
 
